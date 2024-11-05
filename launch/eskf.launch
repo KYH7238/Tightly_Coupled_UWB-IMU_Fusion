@@ -1,0 +1,5 @@
+<launch>
+  <rosparam file="$(find tightly_coupled)/config/params.yaml" command="load" ns="tightly_coupled_eskf"/>
+  <node name="tightly_coupled_eskf" pkg="tightly_coupled" type="eskfNode" output="screen"/>
+
+</launch>

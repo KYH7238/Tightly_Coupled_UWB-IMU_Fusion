@@ -1,0 +1,5 @@
+<launch>
+  <rosparam file="$(find tightly_coupled)/config/params.yaml" command="load" ns="tightly_coupled_liekf"/>
+  <node name="tightly_coupled_liekf" pkg="tightly_coupled" type="liekfNode" output="screen"/>
+
+</launch>
