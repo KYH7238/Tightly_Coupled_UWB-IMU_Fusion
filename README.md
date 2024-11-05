@@ -11,8 +11,9 @@ Experimental setup
 
 
 ![setup](https://github.com/user-attachments/assets/8e8b76ed-4682-434a-b2a4-71f2e6146352)
-This system included one tag and eight anchors configured in a rectangular cuboid formation.   
-If you want to test in your environment, you need to change the config file(config/params.yaml).
+**This system included one tag and eight anchors configured in a rectangular cuboid formation.**   
+   
+*If you want to test in your environment, you need to change the config file(config/params.yaml).*
 
     cd catkin_workspace/src    
     git clone --recursive https://github.com/nooploop-dev/nlink_parser.git 
