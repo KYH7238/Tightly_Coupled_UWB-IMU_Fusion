@@ -80,9 +80,15 @@ Eigen::Matrix3d TightlyCoupled::Exp(const Eigen::Vector3d &omega){
 }
 
 void TightlyCoupled::motionModelJacobian(const ImuData<double> &imu_data){
-    jacobianMatF.block<3, 3>(0,9) = -dt*Eigen::Matrix3d::Identity();
-    jacobianMatF.block<3, 3>(3,12) = -dt*Eigen::Matrix3d::Identity();
-    jacobianMatF.block<3, 3>(6,3) = dt*Eigen::Matrix3d::Identity();
+    Eigen::Matrix3d Rot = STATE.R;
+    jacobianMatF.block<3, 3>(0,3) = 0.5*dt*dt*Eigen::Matrix3d::Identity();
+    jacobianMatF.block<3, 3>(0,6) = dt*Eigen::Matrix3d::Identity();
+    jacobianMatF.block<3, 3>(0,9) = -0.5*dt*dt*Rot;
+    jacobianMatF.block<3, 3>(3,3) = Exp((imu_data.gyr - STATE.w_b)*dt);
+    jacobianMatF.block<3, 3>(3,12) = -Eigen::Matrix3d::Identity()*dt;
+    jacobianMatF.block<3, 3>(6,9) = -Rot*dt;
+    jacobianMatF.block<3, 3>(6,3) = -Rot*vectorToSkewSymmetric(imu_data.acc-STATE.a_b)*dt;
+
 }
 
 void TightlyCoupled::motionModel(const ImuData<double> &imu_data){
@@ -110,9 +116,9 @@ void TightlyCoupled::measurementModel(){
 void TightlyCoupled::measurementModelJacobian(){
     Eigen::Vector3d p = STATE.p;
     for (int i=0; i<jacobianMatH.rows(); i++){
-        jacobianMatH(i,6) = (p(0)-anchorPositions(0,i))/vecH(i);
-        jacobianMatH(i,7) = (p(1)-anchorPositions(1,i))/vecH(i);
-        jacobianMatH(i,8) = (p(2)-anchorPositions(2,i))/vecH(i); 
+        jacobianMatH(i,0) = (p(0)-anchorPositions(0,i))/vecH(i);
+        jacobianMatH(i,1) = (p(1)-anchorPositions(1,i))/vecH(i);
+        jacobianMatH(i,2) = (p(2)-anchorPositions(2,i))/vecH(i); 
     }
 }
 
@@ -129,10 +135,9 @@ StateforEKF<double> TightlyCoupled::correction(){
     }
     K = covP*jacobianMatH.transpose()*residualCov.inverse();
     updateState = K*(vecZ-vecH);
-    
-    STATE.R = Exp(updateState.segment<3>(0)).transpose()*STATE.R;
-    STATE.v += updateState.segment<3>(3);
-    STATE.p += updateState.segment<3>(6);
+    STATE.p += updateState.segment<3>(0);
+    STATE.R = STATE.R*Exp(updateState.segment<3>(3));
+    STATE.v += updateState.segment<3>(6);
     STATE.a_b += updateState.segment<3>(9);
     STATE.w_b += updateState.segment<3>(12);
     covP = (Eigen::Matrix<double, 15, 15>::Identity()-(K*jacobianMatH))*covP;
