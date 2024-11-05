@@ -1,3 +1,8 @@
+/**
+ * Author: Yonghee Kim
+ * Date: 2024-11-5
+ * brief: 6D pose estimation using tightly coupled UWB/IMU fusion using filtering method(EKF/ESKF/UKF/LIEKF)
+ */
 #include <ros/ros.h>
 #include <iostream>
 #include <sensor_msgs/Imu.h>
