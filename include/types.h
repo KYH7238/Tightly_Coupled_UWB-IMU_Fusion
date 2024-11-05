@@ -1,5 +1,4 @@
 #pragma once
-
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 
@@ -32,7 +31,7 @@ template <typename scalar>
 struct StateforESKF{
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     Eigen::Matrix<scalar, 3, 1> p;
-    Eigen::Quaterniond q; //quaternion w, x, y, z 
+    Eigen::Quaterniond q;  
     Eigen::Matrix<scalar, 3, 1> v;
     Eigen::Matrix<scalar, 3, 1> a_b;
     Eigen::Matrix<scalar, 3, 1> w_b;
