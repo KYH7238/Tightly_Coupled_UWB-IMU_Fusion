@@ -42,3 +42,7 @@ target_link_libraries(eskfNode ${catkin_LIBRARIES} tightly_coupled_eskf)
 add_library(tightly_coupled_liekf src/tightlyCoupledFusionLIEKF.cpp)
 add_executable(liekfNode src/liekfNode.cpp)
 target_link_libraries(liekfNode ${catkin_LIBRARIES} tightly_coupled_liekf)
+
+add_library(tightly_coupled_ukf src/tightlyCoupledFusionUKF.cpp)
+add_executable(ukfNode src/ukfNode.cpp)
+target_link_libraries(ukfNode ${catkin_LIBRARIES} tightly_coupled_ukf)

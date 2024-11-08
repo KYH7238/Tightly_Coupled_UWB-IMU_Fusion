@@ -1,7 +1,7 @@
 /**
  * Author: Yonghee Kim
  * Date: 2024-11-5
- * brief: 6D pose estimation using tightly coupled UWB/IMU fusion using filtering method(EKF/ESKF/UKF/LIEKF)
+ * brief: 6D pose estimation using tightly coupled UWB/IMU fusion using UKF
  */
 #include <ros/ros.h>
 #include <iostream>
@@ -10,7 +10,7 @@
 #include <vector>
 #include <queue>
 #include <nlink_parser/LinktrackTagframe0.h>
-#include "tightlyCoupledFusionEKF.h"
+#include "tightlyCoupledFusionUKF.h"
 
 using namespace std;
 
@@ -93,9 +93,8 @@ void processData()
             beforeT = t;
 
             tightlyFuser.setDt(dt);
-            tightlyFuser.setZ(uwbData);
             tightlyFuser.prediction(imuData1);
-            tightlyFuser.correction();
+            tightlyFuser.update(uwbData);
 
             uwbDataQueue.pop();
             imuDataQueue.pop();
@@ -113,7 +112,7 @@ void imuCallback(const sensor_msgs::ImuConstPtr &msg)
         imuInitTime = msg->header.stamp.toSec();
         imuInit = true;
     }
-    imuData.timestamp = msg->header.stamp.toSec()-imuInitTime;  
+    imuData.timestamp = msg->header.stamp.toSec() - imuInitTime;  
     imuData.gyr[0] = msg->angular_velocity.x;
     imuData.gyr[1] = msg->angular_velocity.y;
     imuData.gyr[2] = msg->angular_velocity.z;
@@ -123,17 +122,16 @@ void imuCallback(const sensor_msgs::ImuConstPtr &msg)
 
     imuDataQueue.push(imuData);
     processData();
-    
 }
 
 void uwbCallback(const nlink_parser::LinktrackTagframe0 &msg)
 {   
     UwbData<double> uwbData;
     if(!uwbInit){
-        uwbInitTime = msg.system_time/1000.00;
+        uwbInitTime = msg.system_time / 1000.00;
         uwbInit = true;
     }
-    uwbData.timestamp = msg.system_time/1000.00  - uwbInitTime;  
+    uwbData.timestamp = msg.system_time / 1000.00 - uwbInitTime;  
     for (int i = 0; i < 8; i++) {
         uwbData.distance[i] = msg.dis_arr[i];
     }

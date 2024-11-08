@@ -36,3 +36,31 @@ struct StateforESKF{
     Eigen::Matrix<scalar, 3, 1> a_b;
     Eigen::Matrix<scalar, 3, 1> w_b;
 };
+
+struct WEIGHTS {
+    struct W {
+        double sqrtDlambda;
+        double wj;
+        double wm;
+        double w0;
+
+        W(double l, double alpha) {
+            double m = (std::pow(alpha, 2) - 1) * l;
+            sqrtDlambda = std::sqrt(l + m);
+            wj = 1 / (2 * (l + m));
+            wm = m / (l + m);
+            w0 = m / (l + m) + 3 - std::pow(alpha, 2);
+        }
+    };
+    
+    W redD;
+    W q;
+    W upD;
+
+    WEIGHTS(double red_d_val, double q_val, double up_d_val, double* alpha) :
+    //             15                12            3        diag[0.001, 0.001, 0.001]   
+    redD(red_d_val, alpha[0]),
+    q(q_val, alpha[1]),
+    upD(up_d_val, alpha[2])
+ {}
+};

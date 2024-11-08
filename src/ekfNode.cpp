@@ -3,6 +3,7 @@
  * Date: 2024-11-5
  * brief: 6D pose estimation using tightly coupled UWB/IMU fusion using filtering method(EKF/ESKF/UKF/LIEKF)
  */
+#include "tightlyCoupledFusionEKF.h"
 #include <ros/ros.h>
 #include <iostream>
 #include <sensor_msgs/Imu.h>
@@ -10,7 +11,6 @@
 #include <vector>
 #include <queue>
 #include <nlink_parser/LinktrackTagframe0.h>
-#include "tightlyCoupledFusionEKF.h"
 
 using namespace std;
 
