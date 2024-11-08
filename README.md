@@ -1,14 +1,10 @@
 # Tightly Coupled UWB/IMU Fusion
 
-<<<<<<< HEAD
- 6D pose estimation using tightly coupled UWB/IMU fusion using filtering method(EKF/ESKF/UKF/LIEKF) 
-=======
  6D pose estimation using tightly coupled UWB/IMU fusion using filtering method(EKF/ESKF/UKF/LIEKF)
  - Extended Kalman filter
  - Error-state Kalman filter
  - Unscented  Kalman filter
  - Left-invariant Kalman filter
->>>>>>> 15634f4ef5b91d5dfdce743ea61b9060390d918c
 
 Experimental setup
 ---
