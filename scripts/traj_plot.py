@@ -8,20 +8,12 @@ import tf2_ros
 
 class Plotter:
     def __init__(self):
-        self.esekf_x_uwb = []
-        self.esekf_y_uwb = []
-        self.esekf_z_uwb = []
-        self.ukf_x_uwb = []
-        self.ukf_y_uwb = []
-        self.ukf_z_uwb = []
-        self.ukf_esekf_x_uwb = []
-        self.ukf_esekf_y_uwb = []
-        self.ukf_esekf_z_uwb = []
+        self.gt_file_path = rospy.get_param("/plotter/gt_file_path", "0612_hw3_gt.txt")
 
-        self.pf_x = []
-        self.pf_y = []
-        self.pf_z = []
-
+        self.ekf_x, self.ekf_y, self.ekf_z = [], [], []
+        self.eskf_x, self.eskf_y, self.eskf_z = [], [], []
+        self.ukf_x, self.ukf_y, self.ukf_z  = [], [], []
+        self.liekf_x, self.liekf_y, self.liekf_z = [], [], []
         self.gt_x = []
         self.gt_y = []
         self.gt_z = []
@@ -48,17 +40,13 @@ class Plotter:
         self.path_gt.header.frame_id = "map"
 
         rospy.init_node("plotter")
-        self.br = tf2_ros.TransformBroadcaster()
-        self.pub_1 = rospy.Publisher('/uwb', Path, queue_size=10)
-        self.pub_2 = rospy.Publisher('/ekf', Path, queue_size=10)
-        self.pub_3 = rospy.Publisher('/esekf', Path, queue_size=10)
         self.pub_gt = rospy.Publisher('/gt', Path, queue_size=10)
 
-        # rospy.Subscriber("/result_uwb", PoseStamped, self.esekf_uwb_callback)
-        rospy.Subscriber("/result_ekf", PoseStamped, self.ukf_uwb_callback)
-        # rospy.Subscriber("/result_uwb", PoseStamped, self.ukf_uwb_esekf_callback)
-        rospy.Subscriber("/liekf", PoseStamped, self.ukf_uwb_esekf_callback)
-        rospy.Subscriber("/estimated_path", Path, self.pf_callback)
+        rospy.Subscriber("/ekf", PoseStamped, self.ekf_callback)
+        rospy.Subscriber("/eskf", PoseStamped, self.eskf_callback)
+        rospy.Subscriber("/ukf", PoseStamped, self.ukf_callback)
+        rospy.Subscriber("/liekf", PoseStamped, self.liekf_callback)
+        # rospy.Subscriber("/estimated_path", Path, self.pf_callback)
         self.read_gt_file()
 
     def pf_callback(self, msg):
@@ -66,35 +54,45 @@ class Plotter:
         self.pf_y.append(msg.poses[-1].pose.position.y)
         self.pf_z.append(msg.poses[-1].pose.position.z+0.2)
 
-    def esekf_uwb_callback(self, msg):
+    def ekf_callback(self, msg):
         # self.esekf_uwb_cnt += 1
         # if self.esekf_uwb_cnt >= 3:
-        self.esekf_x_uwb.append(msg.pose.position.x)
-        self.esekf_y_uwb.append(msg.pose.position.y)
-        self.esekf_z_uwb.append(msg.pose.position.z+0.1)
+        self.ekf_x.append(msg.pose.position.x)
+        self.ekf_y.append(msg.pose.position.y)
+        self.ekf_z.append(msg.pose.position.z+0.1)
             # self.esekf_uwb_cnt = 0
 
-        self.publish_transform_and_path(msg, self.path_1, self.pub_1)
+        # self.publish_transform_and_path(msg, self.path_1, self.pub_1)
 
-    def ukf_uwb_callback(self, msg):
+    def eskf_callback(self, msg):
         # self.ukf_uwb_cnt += 1
         # if self.ukf_uwb_cnt >= 3:
-        self.ukf_x_uwb.append(msg.pose.position.x)
-        self.ukf_y_uwb.append(msg.pose.position.y)
-        self.ukf_z_uwb.append(msg.pose.position.z)
+        self.eskf_x.append(msg.pose.position.x)
+        self.eskf_y.append(msg.pose.position.y)
+        self.eskf_z.append(msg.pose.position.z)
             # self.ukf_uwb_cnt = 0
 
-        self.publish_transform_and_path(msg, self.path_2, self.pub_2)
+        # self.publish_transform_and_path(msg, self.path_2, self.pub_2)
 
-    def ukf_uwb_esekf_callback(self, msg):
+    def ukf_callback(self, msg):
         # self.ukf_uwb_cnt += 1
         # if self.ukf_uwb_cnt >= 3:
-        self.ukf_esekf_x_uwb.append(msg.pose.position.x)
-        self.ukf_esekf_y_uwb.append(msg.pose.position.y)
-        self.ukf_esekf_z_uwb.append(msg.pose.position.z)
+        self.ukf_x.append(msg.pose.position.x)
+        self.ukf_y.append(msg.pose.position.y)
+        self.ukf_z.append(msg.pose.position.z)
             # self.ukf_uwb_cnt = 0
 
-        self.publish_transform_and_path(msg, self.path_3, self.pub_3)
+        # self.publish_transform_and_path(msg, self.path_3, self.pub_3)
+
+    def liekf_callback(self, msg):
+        # self.ukf_uwb_cnt += 1
+        # if self.ukf_uwb_cnt >= 3:
+        self.liekf_x.append(msg.pose.position.x)
+        self.liekf_y.append(msg.pose.position.y)
+        self.liekf_z.append(msg.pose.position.z)
+            # self.ukf_uwb_cnt = 0
+
+        # self.publish_transform_and_path(msg, self.path_3, self.pub_3)
 
     def publish_transform_and_path(self, msg, path, pub):
         t = TransformStamped()
@@ -118,8 +116,7 @@ class Plotter:
         pub.publish(path)
 
     def read_gt_file(self):
-        gt_file_path = "0612_hw3_gt.txt"  
-        with open(gt_file_path, 'r') as file:
+        with open(self.gt_file_path, 'r') as file:
             for line in file:
                 data = line.strip().split("\t")
                 a, b, c, _, _, _, _, d, e, f, g, h, i, j, k, l = map(float, data)
@@ -183,10 +180,11 @@ class Plotter:
         while not rospy.is_shutdown():
             ax.clear()
             self.cnt += 1
-            # ax.scatter(self.esekf_x_uwb, self.esekf_y_uwb, self.esekf_z_uwb, c='k', label='UWB position', s=1)
             ax.scatter(self.gt_x, self.gt_y, self.gt_z, c='k', label='Ground Truth', s=1)
-            ax.scatter(self.ukf_x_uwb, self.ukf_y_uwb, self.ukf_z_uwb, c='r', label='EKF', s=1)
-            ax.scatter(self.ukf_esekf_x_uwb, self.ukf_esekf_y_uwb, self.ukf_esekf_z_uwb, c='b', label='IEKF', s=1,linestyle = '-')
+            ax.scatter(self.ekf_x, self.ekf_y, self.ekf_z, c='c', label='EKF', s=1)
+            ax.scatter(self.ukf_x, self.ukf_y, self.ukf_z, c='r', label='UKF', s=1)
+            ax.scatter(self.eskf_x, self.eskf_y, self.eskf_z, c='b', label='ESKF', s=1)
+            ax.scatter(self.liekf_x, self.liekf_y, self.liekf_z, c='g', label='LIEKF', s=1)
             # ax.scatter(self.pf_x, self.pf_y, self.pf_z, c='g', label='PF', s=1)
             ax.set_xlabel('X')
             ax.set_ylabel('Y')
@@ -199,7 +197,5 @@ class Plotter:
 
 if __name__ == "__main__":
     plotter = Plotter()
-    # esekf.ESEKF()
-    # nlink_se3.SE3EKF()
     plotter.plot_data()
     rospy.spin()

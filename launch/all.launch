@@ -1,0 +1,21 @@
+<launch>
+  <rosparam file="$(find tightly_coupled)/config/params.yaml" command="load" ns="tightly_coupled_ekf"/>
+  <node name="tightly_coupled_ekf" pkg="tightly_coupled" type="ekfNode" output="screen"/>
+
+  <rosparam file="$(find tightly_coupled)/config/params.yaml" command="load" ns="tightly_coupled_eskf"/>
+  <node name="tightly_coupled_eskf" pkg="tightly_coupled" type="eskfNode" output="screen"/>
+
+  <rosparam file="$(find tightly_coupled)/config/params.yaml" command="load" ns="tightly_coupled_liekf"/>
+  <node name="tightly_coupled_liekf" pkg="tightly_coupled" type="liekfNode" output="screen"/>
+
+  <rosparam file="$(find tightly_coupled)/config/params.yaml" command="load" ns="tightly_coupled_ukf"/>
+  <node name="tightly_coupled_ukf" pkg="tightly_coupled" type="ukfNode" output="screen"/>
+
+  <node name="plotter" pkg="tightly_coupled" type="traj_plot.py" output="screen" launch-prefix="python3">
+    <!-- <param name="gt_file_path" value="$(find tightly_coupled)/config/0612_hw1_gt.txt"/> -->
+    <!-- <param name="gt_file_path" value="$(find tightly_coupled)/config/0612_hw2_gt.txt"/> -->
+    <param name="gt_file_path" value="$(find tightly_coupled)/config/0612_hw3_gt.txt"/>
+  </node>
+
+
+</launch>

@@ -18,7 +18,7 @@ TightlyCoupled::TightlyCoupled() {
     TOL = 1e-9;
     dt = 0;
 
-    STATE.p = Eigen::Vector3d::Zero();
+    STATE.p <<0, 0, 0;
     STATE.R = Eigen::Matrix3d::Identity();
     STATE.v = Eigen::Vector3d::Zero();
     STATE.a_b = Eigen::Vector3d::Zero();

@@ -1,6 +1,16 @@
-# Tightly Coupled UWB/IMU Fusion
+# Experimental Comparison of Tightly and Loosely Coupled Kalman Filters for 6D Pose Estimation Using UWB and IMU Sensors(2024 ICCAS)
 
- 6D pose estimation using tightly coupled UWB/IMU fusion using filtering method(EKF/ESKF/UKF/LIEKF)
+we present a novel approach for robot pose estimation in SE(3) using a tightly coupled integration
+of Ultra-Wideband (UWB) and Inertial Measurement Unit (IMU) data. Our method leverages Extended Kalman
+Filter (EKF) and Error-State Kalman Filter (ESKF) to accurately estimate the pose, including position and orientation,
+of a mobile robot in three-dimensional space. The tightly coupled approach ensures robust performance even in environments
+where UWB data quality is poor or in NLOS(Non-Line-of-Sight) conditions by utilizing raw UWB data and
+effectively fusing with IMU. The proposed method is validated through extensive simulations and real-world experiments,
+demonstrating significant improvements in accuracy and robustness compared to the loosely coupled method. Our results
+show that the tightly coupled approach, with its enhanced data fusion capability, provides superior z-axis estimation
+performance. This makes it particularly advantageous in applications requiring accurate SE(3) pose estimation.
+
+##  6D pose estimation using tightly coupled UWB/IMU fusion using filtering method(EKF/ESKF/UKF/LIEKF)
  - Extended Kalman filter
  - Error-state Kalman filter
  - Unscented  Kalman filter
@@ -26,7 +36,7 @@ Experimental setup
     catkin_make
 ---
 
-    roslaunch tightly_coupled ekf.launch
+    roslaunch tightly_coupled all.launch
     
 
 
@@ -43,5 +53,5 @@ Experimental results
   </tr>
 </table>
 
-## Experimental Comparison of Tightly and Loosely Coupled Kalman Filters for 6D Pose Estimation Using UWB and IMU Sensors
- Paper Will be uploaded..
+
+

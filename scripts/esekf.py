@@ -19,14 +19,16 @@ class ESEKF:
         self.uwb_pose_y = 0
         self.uwb_pose_z = 0
         self.m_matP = np.zeros((15, 15), dtype=np.float32)
-        self.m_matQ = 0.001 * np.eye(15, dtype=np.float32)
-
+        # self.m_matQ = 0.0001 * np.eye(15, dtype=np.float32)
         self.Fi = np.zeros((15,12), dtype=np.float32)
         self.Fi[3:15,:] = np.eye(12, dtype=np.float32)
-
-        self.m_matQ[9:12, 9:12] = 0.0015387262937311438 * np.eye(3)  
-        self.m_matQ[12:15, 12:15] = 1.0966208586777776e-06 * np.eye(3)
-
+        self.m_matQ = 0.001 * np.eye(12, dtype=np.float32)
+        # self.m_matQ[9:12, 9:12] = 0.0015387262937311438 * np.eye(3)  
+        # self.m_matQ[12:15, 12:15] = 1.0966208586777776e-06 * np.eye(3)
+        # self.m_matQ = 0.0001 * np.eye(15, dtype=np.float32)
+        # self.m_matQ[9:12, 9:12] = 0.0015387262937311438 * np.eye(3)  
+        # self.m_matQ[12:15, 12:15] = 1.0966208586777776e-06 * np.eye(3)
+        self.idx = 0
         self.m_matR = 0.08 * np.eye(8, dtype=np.float32)
         self.m_vecZ = np.zeros(8, dtype=np.float32)
         self.m_vech = np.zeros(8, dtype=np.float32)
@@ -37,7 +39,7 @@ class ESEKF:
         ], dtype=np.float32)
         rospy.Subscriber("/nlink_linktrack_tagframe0", LinktrackTagframe0, self.uwb_callback)
         rospy.Subscriber("/imu/data", Imu, self.imu_callback)
-        self.pub_ekf = rospy.Publisher("result_esekf", PoseStamped, queue_size=10)
+        self.pub_ekf = rospy.Publisher("eskf", PoseStamped, queue_size=10)
         self.pub_uwb = rospy.Publisher("result_uwb", PoseStamped, queue_size=10)
         self.delta_t = 0
         self.before_t = None
@@ -47,7 +49,39 @@ class ESEKF:
         self.uwb_data_queue = []
 
     def setQ(self, dt):
-        pass    
+        self.m_matQ = np.eye(12, dtype=np.float32)
+        self.m_matQ[0:3,0:3] *= 0.0015387262937311438 * np.eye(3)*dt*dt
+        self.m_matQ[3:6,3:6] *= 1.0966208586777776e-06 * np.eye(3)*dt*dt       
+        self.m_matQ[6:9,6:9] *= 0.0015387262937311438 * np.eye(3)*dt # 모름
+        self.m_matQ[9:12,9:12] *= 0.00000015387262937311438 * np.eye(3)*dt # 모름
+
+    def loss_function(self, tag):
+        indices = [i for i in range(self.uwb_position.shape[1]) if i != self.idx]
+        filtered_positions = self.uwb_position[:, indices]
+        filtered_distances = self.m_vecZ[indices]
+
+        distances = np.sqrt(np.sum((tag - filtered_positions.T) ** 2, axis=1))
+        return np.sum((distances - filtered_distances) ** 2)
+    
+    def gradient(self, x):
+        gradient = np.zeros(3)
+        loss_ = self.loss_function(x)
+        for i in range(3):
+            x_step = np.array(3)
+            x_step[i] += 1e-5
+            gradient[i] = (self.loss_function(x_step) - loss_)/1e-5
+        return gradient
+    
+    def gradient_descent(self, max_iter = 10, tolerance = 1e-3):
+        x = self.state["p"]
+        for i in range(max_iter):
+            grad = self.gradient(x)
+            x_new = x - 0.001*grad
+            if np.linalg.norm(x_new - x) < tolerance:
+                print("converge")
+                return x_new
+            x = x_new
+        return x
     
     def uwb_callback(self, msg):
         uwb_time = msg.system_time / 1e3  
@@ -115,11 +149,11 @@ class ESEKF:
                 self.correction()
 
                 self.uwb_data_queue.clear()
-            # else:
-            #     rospy.loginfo("no")
+
+
     def exp_map(self, omega):
         angle = np.linalg.norm(omega)
-        if angle < 1e-9:
+        if angle < 1e-6:
             return np.eye(3)
         axis = omega / angle
         K = np.array([
@@ -150,24 +184,46 @@ class ESEKF:
         y = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2
         z = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2
         q = np.array([w, x, y, z])
-        return q 
+        norm = np.linalg.norm([w,x,y,z])
+        return q/norm
 
-    def motionModelJacobian(self):
+    # def motionModelJacobian(self):
+    #     dt = self.delta_t
+    #     R = Re.from_quat(np.array([self.state["q"][1],self.state["q"][2],self.state["q"][3],self.state["q"][0]])).as_matrix()
+    #     acc = self.linear_acc
+    #     b_acc = self.state["b_acc"]
+    #     b_gyro = self.state["b_gyro"]
+    #     omega = self.angular_vel - b_gyro
+    #     Fx = np.eye(15, dtype=np.float32)
+        
+    #     # Fx[0:3, 3:6] = 0.5 * dt**2 * R @ np.eye(3)
+    #     Fx[0:3, 6:9] = np.eye(3) * dt
+    #     # Fx[0:3, 9:12] = -0.5 * dt**2 * R
+        
+    #     Fx[3:6, 3:6] = R.T @ self.exp_map(omega * dt)
+    #     Fx[3:6, 12:15] = -np.eye(3) * dt
+        
+    #     Fx[6:9, 3:6] = -R @ self.vectorToSkewSymmetric(acc - b_acc) * dt
+    #     Fx[6:9, 9:12] = -R * dt
+        
+    #     self.m_jacobian_matF = Fx
+
+    def motionModelJacobian(self): #잘됨
         dt = self.delta_t
-        # print(self.state["q"])
-        R = Re.from_quat(self.state["q"]).as_matrix()
-        # R = self.quat2rota(self.state["q"])
+        R = Re.from_quat(np.array([self.state["q"][1],self.state["q"][2],self.state["q"][3],self.state["q"][0]])).as_matrix()
         acc = self.linear_acc
         b_acc = self.state["b_acc"]
         b_gyro = self.state["b_gyro"]
         omega = self.angular_vel - b_gyro
         Fx = np.eye(15, dtype=np.float32)
-        Fx[0:3, 6:9] = np.eye(3) * dt
-        Fx[6:9, 9:12] = -R * dt
-        Fx[3:6, 3:6] = R.transpose() @ self.exp_map(omega * dt)
+        
+        Fx[0:3, 6:9] = np.eye(3) * dt      
+        Fx[3:6, 3:6] = self.exp_map(omega * dt)
         Fx[3:6, 12:15] = -np.eye(3) * dt
+        
+        Fx[6:9, 9:12] = -R * dt
         Fx[6:9, 3:6] = -R @ self.vectorToSkewSymmetric(acc - b_acc) * dt
-        # Fx[3:6, 3:6] = self.exp_map(omega * dt).T
+        
         self.m_jacobian_matF = Fx
 
     def vectorToSkewSymmetric(self, vec):
@@ -176,7 +232,7 @@ class ESEKF:
                          [-vec[1], vec[0], 0]], dtype=np.float32)
 
     def motionModel(self):
-        R = Re.from_quat(self.state["q"]).as_matrix()
+        R = Re.from_quat(np.array([self.state["q"][1],self.state["q"][2],self.state["q"][3],self.state["q"][0]])).as_matrix()
         # R = self.quat2rota(self.state["q"])
         v = self.state["v"]
         a_b = self.state["b_acc"]
@@ -191,7 +247,10 @@ class ESEKF:
     def prediction(self):
         self.motionModelJacobian()
         self.motionModel()
-        self.m_matP = np.dot(np.dot(self.m_jacobian_matF, self.m_matP), self.m_jacobian_matF.T) + self.m_matQ
+        self.setQ(self.delta_t)
+        # self.m_matP = np.dot(np.dot(self.m_jacobian_matF, self.m_matP), self.m_jacobian_matF.T) + self.m_matQ
+        self.m_matP = np.dot(np.dot(self.m_jacobian_matF, self.m_matP), self.m_jacobian_matF.T) + np.dot(self.Fi, np.dot(self.m_matQ,self.Fi.T))
+        # print(self.Fi)
 
     def measurementModel(self, vec):
         self.m_vech[0] = np.linalg.norm(vec[:3] - self.uwb_position[:, 0])
@@ -222,11 +281,11 @@ class ESEKF:
             diff = vec[:3] - self.uwb_position[:, i]
             dist = np.linalg.norm(diff)
 
-            H[i, 0] = diff[0] / dist
-            H[i, 1] = diff[1] / dist
-            H[i, 2] = diff[2] / dist
+            H[i, 0] = (vec[0] - self.uwb_position[0, i]) / dist
+            H[i, 1] = (vec[1] - self.uwb_position[1, i]) / dist
+            H[i, 2] = (vec[2] - self.uwb_position[2, i]) / dist
 
-        self.m_jacobian_matH = H @ self.updateH()
+        self.m_jacobian_matH = H @self.updateH()
         # print(self.m_jacobian_matH)
 
     def correction(self):
@@ -236,6 +295,7 @@ class ESEKF:
 
         residual = self.m_vecZ - self.m_vech
         residual_cov = np.dot(np.dot(self.m_jacobian_matH, self.m_matP), self.m_jacobian_matH.T) + self.m_matR
+        # print(residual_cov)
         residual_cov += 1e-6 * np.eye(residual_cov.shape[0])
         Kk = np.dot(np.dot(self.m_matP, self.m_jacobian_matH.T), np.linalg.inv(residual_cov))
         state_update = np.dot(Kk, residual)
@@ -254,7 +314,7 @@ class ESEKF:
         pose.pose.position.x = self.state["p"][0]
         pose.pose.position.y = self.state["p"][1]
         pose.pose.position.z = self.state["p"][2]
-        r = Re.from_quat(self.state["q"])
+        r = Re.from_quat(np.array([self.state["q"][1],self.state["q"][2],self.state["q"][3],self.state["q"][0]]))
         euler_angle = r.as_euler('xyz', degrees=True)
         # pose.pose.orientation.w = euler_angle[0]
         pose.pose.orientation.x = euler_angle[0]

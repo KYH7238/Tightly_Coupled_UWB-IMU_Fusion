@@ -7,7 +7,6 @@
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 
-
 TightlyCoupled::TightlyCoupled()
 {
     covP.setZero();
@@ -42,7 +41,6 @@ void TightlyCoupled::setZ(const UwbData<double> currUwbData){
     for(int i=0; i<8; i++){
         vecZ(i) = currUwbData.distance(i);
     }
-
 }
 void TightlyCoupled::setImuVar(const double stdV, const double stdW){
     covQ.block<3,3>(9,9) = stdV*Eigen::Matrix3d::Identity();
@@ -93,7 +91,6 @@ Eigen::Quaterniond TightlyCoupled::getQuaFromAA(Eigen::Matrix<double, 3, 1> vec)
     double z = unitAxis[2] * sinT;
     Eigen::Quaterniond qua(w, x, y, z);
     qua.normalized();
-
     return qua;
 }
 
@@ -101,7 +98,7 @@ void TightlyCoupled::motionModelJacobian(const ImuData<double> &imu_data){
     Eigen::Matrix3d Rot = STATE.q.toRotationMatrix();
     jacobianMatF.block<3, 3>(0,6) = dt * Eigen::Matrix3d::Identity();
     jacobianMatF.block<3, 3>(6,9) = -Rot*dt;
-    jacobianMatF.block<3, 3>(3,3) = Rot.transpose() * Exp((imu_data.gyr - STATE.w_b)*dt);
+    jacobianMatF.block<3, 3>(3,3) = Exp((imu_data.gyr - STATE.w_b)*dt);
     jacobianMatF.block<3, 3>(3,12) = -dt * Eigen::Matrix3d::Identity();
     jacobianMatF.block<3, 3>(6,3) = -Rot*vectorToSkewSymmetric(imu_data.acc-STATE.a_b)*dt;
 }
@@ -122,17 +119,15 @@ void TightlyCoupled::prediction(const ImuData<double> &imu_data){
 }
 
 void TightlyCoupled::updateH(){
-    Eigen::Quaterniond quat = STATE.q;
+    XdX.setZero();
     XdX.block<3,3>(0,0) = Eigen::Matrix3d::Identity();
-    XdX.block<3,3>(7,6) = Eigen::Matrix3d::Identity();
-    XdX.block<3,3>(10,9) = Eigen::Matrix3d::Identity();
-    XdX.block<3,3>(13,12) = Eigen::Matrix3d::Identity();
-    XdX.block<4,3>(3,3) = 0.5 * (Eigen::Matrix<double,4,3>() << 
-                        -quat.x(), -quat.y(), -quat.z(),
-                        quat.w(), -quat.z(),  quat.y(),
-                        quat.z(),  quat.w(), -quat.x(),
-                        -quat.y(),  quat.x(),  quat.w()).finished();                        
-
+    XdX.block<9,9>(7,6) = Eigen::Matrix<double,9,9>::Identity();
+    Eigen::Quaterniond quat = STATE.q;
+    XdX.block<4,3>(3,3) = 0.5 * (Eigen::Matrix<double,4,3>() <<
+        -quat.x(), -quat.y(), -quat.z(),
+        quat.w(), -quat.z(),  quat.y(),
+        quat.z(),  quat.w(), -quat.x(),
+        -quat.y(),  quat.x(),  quat.w()).finished();
 }
 
 void TightlyCoupled::measurementModel(){
@@ -145,6 +140,7 @@ void TightlyCoupled::measurementModel(){
 void TightlyCoupled::measurementModelJacobian(){
     Eigen::Vector3d p = STATE.p;
     Eigen::Matrix<double, 8, 16> H;
+    H.setZero();
     for (int i=0; i<jacobianMatH.rows(); i++){
         H(i,0) = (p(0)-anchorPositions(0,i))/vecH(i);
         H(i,1) = (p(1)-anchorPositions(1,i))/vecH(i);
