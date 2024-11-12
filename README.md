@@ -45,13 +45,30 @@ Experimental results
 <table>
   <tr>
     <td><img src="https://github.com/user-attachments/assets/1370cd3e-14b3-49e6-a939-375e31f7ed91" alt="tightly_efk_esekf" width="500" height="400"/></td>
-    <td><img src="https://github.com/user-attachments/assets/57946b79-5339-4f88-a661-2233f41ccb7a" alt="tightlycoupled_test2" width="500" height="400"/></td>
+    <td><img src="https://github.com/user-attachments/assets/8ab2a293-5528-4227-8b20-aa25ec5e443a" alt="tightlycoupled_test2" width="500" height="400"/></td>
   </tr>
   <tr>
-    <td><img src="https://github.com/user-attachments/assets/c1918811-18ef-459e-8555-a2d3a52b86ed" alt="tightly_position" width="500" height="400"/></td>
-    <td><img src="https://github.com/user-attachments/assets/5c8969e6-d32b-4976-a2e7-ff16d26474d8" alt="tightly_orien" width="500" height="400"/></td>
+    <td><img src="https://github.com/user-attachments/assets/8f14ac81-7234-4588-b597-745330b57fa3" alt="tightly_position" width="500" height="400"/></td>
+    <td><img src="https://github.com/user-attachments/assets/27a72a4b-c102-4329-934d-ee003716b5f7" alt="tightly_orien" width="500" height="400"/></td>
   </tr>
 </table>
 
+---
+### Position RMSE (meter)
+
+| Filter | X RMSE | Y RMSE | Z RMSE |
+|--------|--------|--------|--------|
+| **EKF**   | 0.1573 | 0.1211 | 0.1479 |
+| **ESKF**  | 0.1573 | 0.1212 | 0.1480 |
+| **LIEKF** | 0.1567 | 0.1204 | 0.1513 |
+| **UKF**   | 0.2446 | 0.2083 | 0.1285 |
+### Orientation RMSE (degree)
+
+| Filter | Roll RMSE | Pitch RMSE | Yaw RMSE |
+|--------|-----------|------------|----------|
+| **EKF**   | 9.2247 | 8.8638 | 33.5447 |
+| **ESKF**  | 9.2231 | 8.8654 | 15.8335 |
+| **LIEKF** | 8.5259 | 9.2223 | 9.7865  |
+| **UKF**   | 9.5407 | 9.3895 | 17.0105 | 
 
 
