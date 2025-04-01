@@ -26,7 +26,7 @@ include_directories(
 )
 
 catkin_package(
-  LIBRARIES tightly_coupled_ekf tightly_coupled_eskf tightly_coupled_liekf
+  LIBRARIES tightly_coupled_ekf tightly_coupled_eskf tightly_coupled_liekf 2tag_ekf
   CATKIN_DEPENDS geometry_msgs sensor_msgs roscpp rospy std_msgs message_runtime nlink_parser
   INCLUDE_DIRS ${EIGEN3_INCLUDE_DIRS}
 )
@@ -46,3 +46,7 @@ target_link_libraries(liekfNode ${catkin_LIBRARIES} tightly_coupled_liekf)
 add_library(tightly_coupled_ukf src/tightlyCoupledFusionUKF.cpp)
 add_executable(ukfNode src/ukfNode.cpp)
 target_link_libraries(ukfNode ${catkin_LIBRARIES} tightly_coupled_ukf)
+
+add_library(2tag_ekf src/2tagEKF.cpp)
+add_executable(2tagNode src/2tagNode.cpp)
+target_link_libraries(2tagNode ${catkin_LIBRARIES} 2tag_ekf)

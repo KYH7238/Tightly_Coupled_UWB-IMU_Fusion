@@ -13,7 +13,6 @@ public:
     void setImuVar(const double stdV, const double stdW);
     void setDt(const double delta_t);
     void setAnchorPositions(const Eigen::Matrix<double, 3, 8> &anchorPositions);
-    void setZ(const UwbData<double>& currUwbData);    
 
     void prediction(const ImuData<double> &imu_data);
     void update(const UwbData<double>& uwb_data);

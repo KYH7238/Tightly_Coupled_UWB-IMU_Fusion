@@ -10,7 +10,7 @@
 #include <vector>
 #include <queue>
 #include <nlink_parser/LinktrackTagframe0.h>
-#include "tightlyCoupledFusionEKF.h"
+#include "2tag.h"
 
 using namespace std;
 
@@ -134,7 +134,7 @@ void uwbCallback(const nlink_parser::LinktrackTagframe0 &msg)
         uwbInit = true;
     }
     uwbData.timestamp = msg.system_time/1000.00  - uwbInitTime;  
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 16; i++) {
         uwbData.distance[i] = msg.dis_arr[i];
     }
     uwbDataQueue.push(uwbData);

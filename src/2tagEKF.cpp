@@ -1,11 +1,11 @@
 /**
  * Author: Yonghee Kim
- * Date: 2024-11-5
+ * Date: 2025-04-01
  * brief: 6D pose estimation using tightly coupled UWB/IMU fusion using filtering method(EKF/ESKF/UKF/LIEKF)
  */
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
-#include "tightlyCoupledFusionEKF.h" 
+#include "2tag.h" 
 
 TightlyCoupled::TightlyCoupled()
 {
@@ -37,7 +37,7 @@ void TightlyCoupled::setDt(const double delta_t){
 }
 
 void TightlyCoupled::setZ(const UwbData<double> currUwbData){
-    for(int i=0; i<8; i++){
+    for(int i=0; i<16; i++){
         vecZ(i) = currUwbData.distance(i);
     }
 }
@@ -105,25 +105,57 @@ void TightlyCoupled::prediction(const ImuData<double> &imu_data){
 
 void TightlyCoupled::measurementModel(){
     Eigen::Vector3d p = STATE.p;
-    for (int i=0; i<vecH.size(); i++){
-        vecH(i) = (p - anchorPositions.col(i)).norm();
+    Eigen::Vector3d offsetLeft(-0.15, 0, 0);
+    Eigen::Vector3d offsetRight(0.15, 0, 0);
+    for (int tag = 0; tag < 2; tag++){
+        Eigen::Vector3d sensorPos = p + STATE.R * (tag == 0 ? offsetLeft : offsetRight);
+        for (int i = 0; i < anchorPositions.cols(); i++){
+            int idx = tag * anchorPositions.cols() + i; // 0~7: 왼쪽 tag, 8~15: 오른쪽 tag
+            vecH(idx) = (sensorPos - anchorPositions.col(i)).norm();
+        }
     }
 }
 
 void TightlyCoupled::measurementModelJacobian(){
     Eigen::Vector3d p = STATE.p;
-    for (int i=0; i<jacobianMatH.rows(); i++){
-        jacobianMatH(i,0) = (p(0)-anchorPositions(0,i))/vecH(i);
-        jacobianMatH(i,1) = (p(1)-anchorPositions(1,i))/vecH(i);    
-        jacobianMatH(i,2) = (p(2)-anchorPositions(2,i))/vecH(i); 
+    Eigen::Vector3d offset_left(-0.15, 0, 0);
+    Eigen::Vector3d offset_right(0.15, 0, 0);
+
+    // 초기화: jacobianMatH 크기는 (16 x 15)
+    jacobianMatH.setZero();
+
+    for (int tag = 0; tag < 2; tag++){
+        Eigen::Vector3d offset = (tag == 0 ? offset_left : offset_right);
+        Eigen::Vector3d sensorPos = p + STATE.R * offset;
+        // 회전에 대한 미분은: d(sensorPos)/d(theta) = - STATE.R * skew(offset)
+        Eigen::Matrix3d skew_offset = vectorToSkewSymmetric(offset);
+
+        for (int i = 0; i < anchorPositions.cols(); i++){
+            int idx = tag * anchorPositions.cols() + i;
+            Eigen::Vector3d diff = sensorPos - anchorPositions.col(i);
+            double norm_val = diff.norm();
+
+            // p에 대한 편미분: diff / norm
+            jacobianMatH(idx, 0) = diff(0) / norm_val;
+            jacobianMatH(idx, 1) = diff(1) / norm_val;
+            jacobianMatH(idx, 2) = diff(2) / norm_val;
+
+            // 회전 (소규모 회전 업데이트를 가정하면, 센서 위치 변화는 -R*skew(offset) * delta_theta)
+            // 따라서 h(x) 에 대한 회전 편미분은
+            // (diff^T / norm) * (-STATE.R * skew(offset))
+            Eigen::RowVector3d dtheta = (diff.transpose() / norm_val) * (-STATE.R * skew_offset);
+            jacobianMatH.block<1, 3>(idx, 3) = dtheta;
+
+            // 나머지 상태 변수(속도, 가속도 바이어스, 자이로 바이어스)에 대한 미분은 0으로 두었음.
+        }
     }
 }
 
 StateforEKF<double> TightlyCoupled::correction(){
     measurementModel();
     measurementModelJacobian();
-    Eigen::Matrix<double, 8, 8> residualCov;
-    Eigen::Matrix<double, 15, 8> K;
+    Eigen::Matrix<double, 16, 16> residualCov;
+    Eigen::Matrix<double, 15, 16> K;
     Eigen::Matrix<double, 15, 1> updateState;
     residualCov = jacobianMatH*covP*jacobianMatH.transpose() + covR;
     if (residualCov.determinant() == 0 || !residualCov.allFinite()) {

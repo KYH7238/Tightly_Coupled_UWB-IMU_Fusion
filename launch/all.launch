@@ -16,6 +16,4 @@
     <!-- <param name="gt_file_path" value="$(find tightly_coupled)/config/0612_hw2_gt.txt"/> -->
     <param name="gt_file_path" value="$(find tightly_coupled)/config/0612_hw3_gt.txt"/>
   </node>
-
-
 </launch>
