@@ -31,7 +31,7 @@ Experimental setup
 
     cd catkin_workspace/src    
     git clone --recursive https://github.com/nooploop-dev/nlink_parser.git 
-    git clone https://github.com/KYH04444/Tightly_Coupled_Fusion.git
+    git clone https://github.com/KYH7238/Tightly_Coupled_Fusion.git
     cd ..   
     catkin_make
 ---
