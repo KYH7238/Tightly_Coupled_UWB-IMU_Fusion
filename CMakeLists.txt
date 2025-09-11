@@ -26,27 +26,35 @@ include_directories(
 )
 
 catkin_package(
-  LIBRARIES tightly_coupled_ekf tightly_coupled_eskf tightly_coupled_liekf 2tag_ekf
+  LIBRARIES tightly_coupled_ekf tightly_coupled_eskf tightly_coupled_ukf tightly_coupled_liekf loosely_coupled_ekf loosely_coupled_eskf loosely_coupled_ukf 2tag_ekf
   CATKIN_DEPENDS geometry_msgs sensor_msgs roscpp rospy std_msgs message_runtime nlink_parser
   INCLUDE_DIRS ${EIGEN3_INCLUDE_DIRS}
 )
 
 add_library(tightly_coupled_ekf src/tightlyCoupledFusionEKF.cpp)
-add_executable(ekfNode src/ekfNode.cpp)
-target_link_libraries(ekfNode ${catkin_LIBRARIES} tightly_coupled_ekf)
+add_executable(tightlyEkfNode src/tightlyEkfNode.cpp)
+target_link_libraries(tightlyEkfNode ${catkin_LIBRARIES} tightly_coupled_ekf)
 
 add_library(tightly_coupled_eskf src/tightlyCoupledFusionESKF.cpp)
-add_executable(eskfNode src/eskfNode.cpp)
-target_link_libraries(eskfNode ${catkin_LIBRARIES} tightly_coupled_eskf)
+add_executable(tightlyEskfNode src/tightlyEskfNode.cpp)
+target_link_libraries(tightlyEskfNode ${catkin_LIBRARIES} tightly_coupled_eskf)
 
 add_library(tightly_coupled_liekf src/tightlyCoupledFusionLIEKF.cpp)
-add_executable(liekfNode src/liekfNode.cpp)
-target_link_libraries(liekfNode ${catkin_LIBRARIES} tightly_coupled_liekf)
+add_executable(tightlyLiekfNode src/tightlyLiekfNode.cpp)
+target_link_libraries(tightlyLiekfNode ${catkin_LIBRARIES} tightly_coupled_liekf)
 
 add_library(tightly_coupled_ukf src/tightlyCoupledFusionUKF.cpp)
-add_executable(ukfNode src/ukfNode.cpp)
+add_executable(ukfNode src/tightlyUkfNode.cpp)
 target_link_libraries(ukfNode ${catkin_LIBRARIES} tightly_coupled_ukf)
 
-add_library(2tag_ekf src/2tagEKF.cpp)
-add_executable(2tagNode src/2tagNode.cpp)
-target_link_libraries(2tagNode ${catkin_LIBRARIES} 2tag_ekf)
+add_library(loosely_coupled_ekf src/looselyCoupledFusionEKF.cpp)
+add_executable(looselyEkfNode src/looselyEkfNode.cpp)
+target_link_libraries(looselyEkfNode ${catkin_LIBRARIES} loosely_coupled_ekf)
+
+add_library(loosely_coupled_eskf src/looselyCoupledFusionESKF.cpp)
+add_executable(looselyEskfNode src/looselyEskfNode.cpp)
+target_link_libraries(looselyEskfNode ${catkin_LIBRARIES} loosely_coupled_eskf)
+
+add_library(loosely_coupled_ukf src/looselyCoupledFusionUKF.cpp)
+add_executable(looselyUkfNode src/looselyUkfNode.cpp)
+target_link_libraries(looselyUkfNode ${catkin_LIBRARIES} loosely_coupled_ukf)

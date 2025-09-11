@@ -1,9 +1,8 @@
 /**
  * Author: Yonghee Kim
  * Date: 2024-11-5
- * brief: 6D pose estimation using tightly coupled UWB/IMU fusion using filtering method(EKF/ESKF/UKF/LIEKF)
+ * brief: 6D pose estimation using tightly coupled UWB/IMU fusion using UKF
  */
-#include "tightlyCoupledFusionEKF.h"
 #include <ros/ros.h>
 #include <iostream>
 #include <sensor_msgs/Imu.h>
@@ -11,6 +10,7 @@
 #include <vector>
 #include <queue>
 #include <nlink_parser/LinktrackTagframe0.h>
+#include "tightlyCoupledFusionUKF.h"
 
 using namespace std;
 
@@ -46,7 +46,7 @@ void clearQueue(queue<UwbData<double>> &q)
 void publisher()
 {
     geometry_msgs::PoseStamped pose;
-    pose.header.frame_id = "liekf";
+    pose.header.frame_id = "ukf";
     pose.header.stamp = ros::Time::now();
     STATE = tightlyFuser.getState();
 
@@ -93,9 +93,8 @@ void processData()
             beforeT = t;
 
             tightlyFuser.setDt(dt);
-            tightlyFuser.setZ(uwbData);
             tightlyFuser.prediction(imuData1);
-            tightlyFuser.correction();
+            tightlyFuser.update(uwbData);
 
             uwbDataQueue.pop();
             imuDataQueue.pop();
@@ -113,7 +112,7 @@ void imuCallback(const sensor_msgs::ImuConstPtr &msg)
         imuInitTime = msg->header.stamp.toSec();
         imuInit = true;
     }
-    imuData.timestamp = msg->header.stamp.toSec()-imuInitTime;  
+    imuData.timestamp = msg->header.stamp.toSec() - imuInitTime;  
     imuData.gyr[0] = msg->angular_velocity.x;
     imuData.gyr[1] = msg->angular_velocity.y;
     imuData.gyr[2] = msg->angular_velocity.z;
@@ -123,44 +122,46 @@ void imuCallback(const sensor_msgs::ImuConstPtr &msg)
 
     imuDataQueue.push(imuData);
     processData();
-    
 }
 
 void uwbCallback(const nlink_parser::LinktrackTagframe0 &msg)
 {   
     UwbData<double> uwbData;
-    if(!uwbInit){
-        uwbInitTime = msg.system_time/1000.00;
+    if (!uwbInit) {
+        uwbInitTime = msg.system_time / 1000.0;
         uwbInit = true;
     }
-    uwbData.timestamp = msg.system_time/1000.00  - uwbInitTime;  
+    uwbData.timestamp = msg.system_time / 1000.0 - uwbInitTime;
+
     for (int i = 0; i < 8; i++) {
         uwbData.distance[i] = msg.dis_arr[i];
     }
+    uwbData.has_distance = true;   
+    uwbData.has_pos = false;     
     uwbDataQueue.push(uwbData);
     processData();
 }
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "tightly_coupled_liekf_fusion");
+    ros::init(argc, argv, "tightly_coupled_ukf_fusion");
     ros::NodeHandle nh, ph("~");
     
     double stdV, stdW;
     std::vector<double> anchorpositions_vec;
     if (!initialize){
         
-        if (!ph.getParam("/tightly_coupled_liekf/stdV", stdV)) {
+        if (!ph.getParam("/tightly_coupled_ukf/stdV", stdV)) {
             ROS_ERROR("Failed to get parameter stdV");
             return -1;
         }
 
-        if (!ph.getParam("/tightly_coupled_liekf/stdW", stdW)) {
+        if (!ph.getParam("/tightly_coupled_ukf/stdW", stdW)) {
             ROS_ERROR("Failed to get parameter stdW");
             return -1;
         }
 
-        if (!ph.getParam("/tightly_coupled_liekf/anchorPositions", anchorpositions_vec)) {
+        if (!ph.getParam("/tightly_coupled_ukf/anchorPositions", anchorpositions_vec)) {
             ROS_ERROR("Failed to get parameter anchorPositions");
             return -1;
         }
@@ -181,7 +182,7 @@ int main(int argc, char **argv)
         tightlyFuser.setImuVar(stdV, stdW);
     }
 
-    resultPuber = nh.advertise<geometry_msgs::PoseStamped>("/liekf", 1);
+    resultPuber = nh.advertise<geometry_msgs::PoseStamped>("/ukf", 1);
     ros::Subscriber uwbSub = nh.subscribe("/nlink_linktrack_tagframe0", 10, uwbCallback);
     ros::Subscriber imuSub = nh.subscribe("/imu/data", 10, imuCallback);
     STATE = tightlyFuser.getState();

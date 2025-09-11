@@ -1,9 +1,8 @@
 /**
  * Author: Yonghee Kim
- * Date: 2024-11-5
- * brief: 6D pose estimation using tightly coupled UWB/IMU fusion using filtering method(EKF/ESKF/UKF/LIEKF)
+ * Date: 2025-09-11
+ * brief: 6D pose estimation using loosely coupled UWB/IMU fusion using filtering method(EKF/ESKF/UKF/LIEKF)
  */
-#include "tightlyCoupledFusionESKF.h"
 #include <ros/ros.h>
 #include <iostream>
 #include <sensor_msgs/Imu.h>
@@ -11,13 +10,15 @@
 #include <vector>
 #include <queue>
 #include <nlink_parser/LinktrackTagframe0.h>
+#include "looselyCoupledFusionEKF.h"
+#include "types.h"
 
 using namespace std;
 
 double dt = 0;
 double beforeT = 0;
-TightlyCoupled tightlyFuser;
-StateforESKF<double> STATE;
+LooselyCoupled looselyFuser;
+StateforEKF<double> STATE;
 queue<UwbData<double>> uwbDataQueue;
 queue<ImuData<double>> imuDataQueue;
 bool uwbInit = false;
@@ -46,14 +47,14 @@ void clearQueue(queue<UwbData<double>> &q)
 void publisher()
 {
     geometry_msgs::PoseStamped pose;
-    pose.header.frame_id = "eskf";
+    pose.header.frame_id = "ekf";
     pose.header.stamp = ros::Time::now();
-    STATE = tightlyFuser.getState();
+    STATE = looselyFuser.getState();
 
     pose.pose.position.x = STATE.p(0);
     pose.pose.position.y = STATE.p(1);
     pose.pose.position.z = STATE.p(2);
-    Eigen::Quaterniond quaternion = STATE.q;
+    Eigen::Quaterniond quaternion(STATE.R);
     pose.pose.orientation.x = quaternion.x();
     pose.pose.orientation.y = quaternion.y();
     pose.pose.orientation.z = quaternion.z();
@@ -73,10 +74,11 @@ void processData()
         ImuData<double> imuData1 = imuDataQueue.front();
         ImuData<double> imuData2 = imuDataQueue.back();
         UwbData<double> uwbData = uwbDataQueue.front();
+
         if (imuData1.timestamp <= uwbData.timestamp && uwbData.timestamp <= imuData2.timestamp) {
             double t1 = imuData1.timestamp;
             double t2 = imuData2.timestamp;
-            double t = uwbData.timestamp;
+            double t  = uwbData.timestamp;
             double alpha;
             double delta_t = t2 - t1;
             if (delta_t == 0) {
@@ -92,14 +94,13 @@ void processData()
             dt = t - beforeT;
             beforeT = t;
 
-            tightlyFuser.setDt(dt);
-            tightlyFuser.setZ(uwbData);
-            tightlyFuser.prediction(imuData1);
-            tightlyFuser.correction();
+            looselyFuser.setDt(dt);
+            looselyFuser.setZ(uwbData);   
+            looselyFuser.prediction(imuData1);
+            looselyFuser.correction();
 
             uwbDataQueue.pop();
             imuDataQueue.pop();
-            
 
             publisher();
         }
@@ -107,13 +108,13 @@ void processData()
 }
 
 void imuCallback(const sensor_msgs::ImuConstPtr &msg)
-{   
+{
     ImuData<double> imuData;
     if (!imuInit){
         imuInitTime = msg->header.stamp.toSec();
         imuInit = true;
     }
-    imuData.timestamp = msg->header.stamp.toSec()-imuInitTime;  
+    imuData.timestamp = msg->header.stamp.toSec()-imuInitTime;
     imuData.gyr[0] = msg->angular_velocity.x;
     imuData.gyr[1] = msg->angular_velocity.y;
     imuData.gyr[2] = msg->angular_velocity.z;
@@ -123,70 +124,53 @@ void imuCallback(const sensor_msgs::ImuConstPtr &msg)
 
     imuDataQueue.push(imuData);
     processData();
-    
 }
 
 void uwbCallback(const nlink_parser::LinktrackTagframe0 &msg)
-{   
-    UwbData<double> uwbData;
+{
+    UwbData<double> uwb;
     if(!uwbInit){
-        uwbInitTime = msg.system_time/1000.00;
+        uwbInitTime = msg.system_time/1000.0;
         uwbInit = true;
     }
-    uwbData.timestamp = msg.system_time/1000.00  - uwbInitTime;  
-    for (int i = 0; i < 8; i++) {
-        uwbData.distance[i] = msg.dis_arr[i];
-    }
-    uwbDataQueue.push(uwbData);
+    uwb.timestamp = msg.system_time/1000.0 - uwbInitTime;
+    uwb.pos[0] = msg.pos_3d[0];
+    uwb.pos[1] = msg.pos_3d[1];
+    uwb.pos[2] = -msg.pos_3d[2];
+    uwb.has_pos = true;
+    uwb.has_distance = false;
+
+    uwbDataQueue.push(uwb);
     processData();
 }
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "tightly_coupled_eskf_fusion");
+    ros::init(argc, argv, "loosely_coupled_ekf_fusion");
     ros::NodeHandle nh, ph("~");
-    
+
     double stdV, stdW;
-    std::vector<double> anchorpositions_vec;
     if (!initialize){
-        
-        if (!ph.getParam("/tightly_coupled_eskf/stdV", stdV)) {
+        if (!ph.getParam("/loosely_coupled_ekf/stdV", stdV)) {
             ROS_ERROR("Failed to get parameter stdV");
             return -1;
         }
 
-        if (!ph.getParam("/tightly_coupled_eskf/stdW", stdW)) {
+        if (!ph.getParam("/loosely_coupled_ekf/stdW", stdW)) {
             ROS_ERROR("Failed to get parameter stdW");
             return -1;
         }
 
-        if (!ph.getParam("/tightly_coupled_eskf/anchorPositions", anchorpositions_vec)) {
-            ROS_ERROR("Failed to get parameter anchorPositions");
-            return -1;
-        }
-
-        if (anchorpositions_vec.size() == 24) {  
-            Eigen::Matrix<double, 3, 8> anchorpositions;
-            for (int i = 0; i < 8; i++) {
-                anchorpositions(0, i) = anchorpositions_vec[i];
-                anchorpositions(1, i) = anchorpositions_vec[i + 8];
-                anchorpositions(2, i) = anchorpositions_vec[i + 16];
-            }
-            tightlyFuser.setAnchorPositions(anchorpositions);
-        } else {
-            ROS_ERROR("anchorPositions parameter size is incorrect");
-            return -1;
-        }
         initialize = true;
-        tightlyFuser.setImuVar(stdV, stdW);
+        looselyFuser.setImuVar(stdV, stdW);
     }
 
-    resultPuber = nh.advertise<geometry_msgs::PoseStamped>("/eskf", 1);
-    ros::Subscriber uwbSub = nh.subscribe("/nlink_linktrack_tagframe0", 10, uwbCallback);
-    ros::Subscriber imuSub = nh.subscribe("/imu/data", 10, imuCallback);
-    STATE = tightlyFuser.getState();
-    tightlyFuser.setState(STATE);
-    ros::spin();  
+    resultPuber = nh.advertise<geometry_msgs::PoseStamped>("/ekf", 10);
+    ros::Subscriber uwbSub = nh.subscribe("/nlink_linktrack_tagframe0", 50, uwbCallback);
+    ros::Subscriber imuSub = nh.subscribe("/imu/data", 200, imuCallback);
+    STATE = looselyFuser.getState();
+    looselyFuser.setState(STATE);
+    ros::spin();
 
     return 0;
 }

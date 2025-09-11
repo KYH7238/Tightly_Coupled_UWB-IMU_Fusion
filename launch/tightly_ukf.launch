@@ -1,5 +1,5 @@
 <launch>
   <rosparam file="$(find tightly_coupled)/config/params.yaml" command="load" ns="tightly_coupled_ukf"/>
-  <node name="tightly_coupled_ukf" pkg="tightly_coupled" type="ukfNode" output="screen"/>
+  <node name="tightly_coupled_ukf" pkg="tightly_coupled" type="tightlyUkfNode" output="screen"/>
 
 </launch>

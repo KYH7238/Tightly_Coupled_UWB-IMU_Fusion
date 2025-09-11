@@ -14,7 +14,10 @@ template <typename scalar>
 struct UwbData {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     double timestamp;
-    Eigen::Matrix<scalar, 8, 1> distance;
+    Eigen::Matrix<scalar, 8, 1> distance{Eigen::Matrix<scalar,8,1>::Zero()};
+    Eigen::Matrix<scalar, 3, 1> pos{Eigen::Matrix<scalar,3,1>::Zero()};
+    bool has_distance{false};
+    bool has_pos{false};
 };
 
 template <typename scalar>

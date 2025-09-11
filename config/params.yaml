@@ -2,9 +2,15 @@ stdV: 0.0015387262937311438  # standard deviation of linear accelerometer
 stdW: 1.0966208586777776e-06 # standard deviation of angular Velocity
 
 anchorPositions: [0, 0, 8.86, 8.86, 0, 0, 8.86, 8.86,
-                 0, 8.00, 8.00, 0, 0, 8.00, 8.00, 0,
-                 0.0, 0.0, 0.0, 0.0, 2.20, 2.20, 2.20, 2.20]
+                0, 8.00, 8.00, 0, 0, 8.00, 8.00, 0,
+                0.0, 0.0, 0.0, 0.0, 2.20, 2.20, 2.20, 2.20]
 
+stdW: 0.01  # standard deviation of angular Velocity
+stdV: 0.01  # standard deviation of linear accelerometer
+
+# anchorPositions: [-4.35, -4.35, 4.46,  4.46, -4.35, -4.35, 4.46,  4.46,
+#                   -4.65,  4.81, 4.87, -4.68, -4.36,  4.85, 4.87, -4.68,
+#                    0.25,  0.25, 0.25,  0.25,  2.38,  2.35, 2.36,  2.38]
 # anchorPositions: [x1,  x2,  x3,  x4,  x5,  x6,  x7,  x8,
 #                  y1,  y2,  y3,  y4,  y5,  y6,  y7,  y8,
 #                  z1,  z2,  z3,  z4,  z5,  z6,  z7,  z8] 

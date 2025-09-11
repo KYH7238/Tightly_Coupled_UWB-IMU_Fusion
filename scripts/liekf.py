@@ -179,16 +179,17 @@ class SE3IEKF:
 
         pose = PoseStamped()
         pose.header.frame_id = "map"
+        qx, qy, qz, qw = R.from_matrix(self.state["R"]).as_quat()
         pose.header.stamp = rospy.Time.now()
         pose.pose.position.x = self.state["p"][0]
         pose.pose.position.y = self.state["p"][1]
         pose.pose.position.z = self.state["p"][2]
         # quaternion = R.from_matrix(self.state["R"]).as_quat()
-        quaternion = R.from_matrix(self.state["R"]).as_euler('xyz',degrees=True)
-        pose.pose.orientation.x = quaternion[0]
-        pose.pose.orientation.y = quaternion[1]
-        pose.pose.orientation.z = quaternion[2]
-        # pose.pose.orientation.w = quaternion[3]
+        # quaternion = R.from_matrix(self.state["R"]).as_euler('xyz',degrees=True)
+        pose.pose.orientation.x = qx
+        pose.pose.orientation.y = qy
+        pose.pose.orientation.z = qz
+        pose.pose.orientation.w = qw
         self.pub_ekf.publish(pose)
 
 if __name__ == "__main__":
